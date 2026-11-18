@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>E-CIBL</title>
+<meta name="description" content="E-CIBL: Pre-test, 6 pertemuan dengan Virtual Lab dan LKM digital, lalu Post-test.">
+<meta name="theme-color" content="#BFE3FF">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="E-CIBL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+  :root { --ink:#0F172A; --muted:#475569; --sky:#BFE3FF; --sky2:#F3FAFF; --focus:#38BDF8; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink);
+         background: linear-gradient(var(--sky), var(--sky2) 55%, #fff); display: flex; flex-direction: column; overflow: hidden; }
+  /* Banner pasang: mendorong aplikasi ke bawah, tidak menutupinya */
+  .banner { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; padding-top: max(8px, env(safe-area-inset-top));
+            background: #111; color: #fff; font-size: 14px; }
+  .banner img { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
+  .banner span { flex: 1; min-width: 0; }
+  .banner button { font: 700 14px system-ui; border: 0; border-radius: 999px; min-height: 36px; padding: 0 14px; cursor: pointer; }
+  .banner .utama { background: #fff; color: #111; }
+  .banner .tutup { background: transparent; color: #fff; min-width: 40px; padding: 0; font-size: 20px; line-height: 1; }
+  .status { padding: 6px 14px; background: #FEF3C7; color: #92400E; font-size: 13px; font-weight: 600; text-align: center; }
+  #app { flex: 1; width: 100%; border: 0; display: block; background: transparent; }
+  .layar { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; z-index: 5;
+           background: linear-gradient(var(--sky), var(--sky2) 55%, #fff); transition: opacity .25s ease; }
+  .layar.hilang { opacity: 0; pointer-events: none; }
+  .kartu { max-width: 420px; width: 100%; text-align: center; }
+  .kartu.putih { background: #fff; border-radius: 28px; padding: 32px 24px; box-shadow: 0 20px 40px -12px rgba(15,23,42,.12); }
+  .kartu img { width: 76px; height: 76px; border-radius: 22px; box-shadow: 0 12px 24px -10px rgba(15,23,42,.35); }
+  .kartu h1 { font-size: 22px; margin: 16px 0 6px; }
+  .kartu p { color: var(--muted); margin: 0 0 18px; }
+  .putar { width: 28px; height: 28px; margin: 18px auto 0; border: 3px solid rgba(15,23,42,.15); border-top-color: #111; border-radius: 50%; animation: putar .8s linear infinite; }
+  @keyframes putar { to { transform: rotate(360deg); } }
+  .tombol { font: 700 16px system-ui; background: #111; color: #fff; border: 0; border-radius: 999px; min-height: 48px; padding: 0 28px; cursor: pointer; }
+  code { font: 13px ui-monospace, Menlo, Consolas, monospace; background: #F2F5FF; padding: 2px 6px; border-radius: 6px; word-break: break-all; }
+  button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  /* Lembar petunjuk iPhone */
+  .lembar-back { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+  .lembar { background: #fff; width: 100%; max-width: 480px; border-radius: 28px 28px 0 0; padding: 24px 22px calc(22px + env(safe-area-inset-bottom)); }
+  .lembar h2 { font-size: 19px; margin: 0 0 12px; }
+  .lembar ol { margin: 0 0 18px; padding-left: 22px; display: grid; gap: 10px; }
+  .lembar .tombol { width: 100%; }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { .putar { animation-duration: 2s; } .layar { transition: none; } }
+</style>
+</head>
+<body>
+  <div class="banner" id="banner" role="region" aria-label="Pasang aplikasi" hidden>
+    <img src="./icon-192.png" alt="">
+    <span id="banner-teks">Pasang E-CIBL di layar utama agar lebih cepat dibuka.</span>
+    <button class="utama" id="btn-pasang">Pasang</button>
+    <button class="tutup" id="btn-tutup" aria-label="Tutup">×</button>
+  </div>
+  <div class="status" id="status" role="status" hidden>Koneksi terputus. Pekerjaanmu tetap tersimpan di perangkat.</div>
+
+  <iframe id="app" title="E-CIBL" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+
+  <div class="layar" id="layar-muat" aria-live="polite">
+    <div class="kartu"><img src="./icon-192.png" alt=""><h1>E-CIBL</h1><p id="muat-teks">Memuat ruang belajar…</p><div class="putar" aria-hidden="true"></div>
+      <button class="tombol" id="btn-ulang-lambat" style="margin-top:18px" hidden>Muat ulang</button></div>
+  </div>
+  <div class="layar" id="layar-offline" hidden>
+    <div class="kartu putih"><img src="./icon-192.png" alt=""><h1>Tidak ada koneksi internet</h1>
+      <p>E-CIBL butuh internet untuk memuat materi dan menyimpan pekerjaanmu. Aplikasi akan terbuka otomatis saat koneksi kembali.</p>
+      <button class="tombol" id="btn-coba">Coba lagi</button></div>
+  </div>
+  <div class="layar" id="layar-config" hidden>
+    <div class="kartu putih"><img src="./icon-192.png" alt=""><h1>URL aplikasi belum diisi</h1>
+      <p>Buka berkas <code>config.js</code> lalu tempel URL Web App Google Apps Script (berakhiran <code>/exec</code>).</p></div>
+  </div>
+  <div class="lembar-back" id="lembar-ios" hidden>
+    <div class="lembar" role="dialog" aria-modal="true" aria-labelledby="ios-judul">
+      <h2 id="ios-judul">Pasang E-CIBL di iPhone/iPad</h2>
+      <ol><li>Ketuk ikon <strong>Bagikan</strong> (kotak dengan panah ke atas) di bilah Safari.</li>
+        <li>Gulir lalu pilih <strong>Tambahkan ke Layar Utama</strong>.</li>
+        <li>Ketuk <strong>Tambah</strong>. Ikon E-CIBL muncul di layar utama.</li></ol>
+      <button class="tombol" id="btn-ios-ok">Mengerti</button>
+    </div>
+  </div>
+
+<script src="./config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var URL_GAS = String(window.ECIBL_GAS_URL || '').trim();
+  var frame = $('app'), sudahMuat = false, timerLambat;
+  var simpan = function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} };
+  var baca = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+  function sembunyi(id) { var el = $(id); el.classList.add('hilang'); setTimeout(function () { el.hidden = true; }, 260); }
+
+  function muat() {
+    if (/GANTI_DENGAN/.test(URL_GAS) || !/^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[A-Za-z0-9_-]{20,}\/exec/.test(URL_GAS)) {
+      $('layar-muat').hidden = true; $('layar-config').hidden = false; return;
+    }
+    if (!navigator.onLine) { $('layar-muat').hidden = true; $('layar-offline').hidden = false; return; }
+    $('layar-offline').hidden = true;
+    var lm = $('layar-muat'); lm.hidden = false; lm.classList.remove('hilang');
+    clearTimeout(timerLambat);
+    timerLambat = setTimeout(function () {
+      if (sudahMuat) return;
+      $('muat-teks').textContent = 'Koneksi lambat, masih memuat…'; $('btn-ulang-lambat').hidden = false;
+    }, 15000);
+    frame.src = URL_GAS;
+  }
+
+  frame.addEventListener('load', function () {
+    if (!frame.src) return;
+    sudahMuat = true; clearTimeout(timerLambat); sembunyi('layar-muat');
+  });
+  $('btn-coba').onclick = muat;
+  $('btn-ulang-lambat').onclick = function () { sudahMuat = false; $('btn-ulang-lambat').hidden = true; $('muat-teks').textContent = 'Memuat ruang belajar…'; frame.src = 'about:blank'; setTimeout(muat, 50); };
+  window.addEventListener('online', function () { $('status').hidden = true; if (!sudahMuat) muat(); });
+  window.addEventListener('offline', function () { if (sudahMuat) $('status').hidden = false; });
+
+  // ── Service worker (cangkang offline) ──
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); });
+  }
+
+  // ── Tombol pasang ──
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  var ditutup = Number(baca('ecibl_pwa_tutup') || 0) > Date.now();
+  var promptPasang = null;
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); promptPasang = e;
+    if (!standalone && !ditutup) $('banner').hidden = false;
+  });
+  if (ios && !standalone && !ditutup) {
+    $('banner-teks').textContent = 'Pasang E-CIBL di layar utama iPhone/iPad.';
+    $('btn-pasang').textContent = 'Caranya';
+    $('banner').hidden = false;
+  }
+  $('btn-pasang').onclick = function () {
+    if (promptPasang) {
+      promptPasang.prompt();
+      promptPasang.userChoice.then(function (r) { if (r.outcome === 'accepted') $('banner').hidden = true; promptPasang = null; });
+    } else if (ios) { $('lembar-ios').hidden = false; $('btn-ios-ok').focus(); }
+  };
+  $('btn-tutup').onclick = function () { $('banner').hidden = true; simpan('ecibl_pwa_tutup', String(Date.now() + 7 * 864e5)); };
+  $('btn-ios-ok').onclick = function () { $('lembar-ios').hidden = true; };
+  $('lembar-ios').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  window.addEventListener('appinstalled', function () { $('banner').hidden = true; });
+
+  muat();
+})();
+</script>
+</body>
+</html>
