@@ -61,7 +61,9 @@
   </div>
   <div class="status" id="status" role="status" hidden>Koneksi terputus. Pekerjaanmu tetap tersimpan di perangkat.</div>
 
-  <iframe id="app" title="E-CIBL" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+  <!-- credentialless: Chrome memuat aplikasi tanpa cookie Google, jadi tidak kena galat
+       "Maaf, saat ini tidak dapat membuka file" saat browser login ke beberapa akun Google. -->
+  <iframe id="app" title="E-CIBL" credentialless allow="clipboard-read; clipboard-write; fullscreen"></iframe>
 
   <div class="layar" id="layar-muat" aria-live="polite">
     <div class="kartu"><img src="./icon-192.png" alt=""><h1>E-CIBL</h1><p id="muat-teks">Memuat ruang belajar…</p><div class="putar" aria-hidden="true"></div>
@@ -121,6 +123,26 @@
   $('btn-ulang-lambat').onclick = function () { sudahMuat = false; $('btn-ulang-lambat').hidden = true; $('muat-teks').textContent = 'Memuat ruang belajar…'; frame.src = 'about:blank'; setTimeout(muat, 50); };
   window.addEventListener('online', function () { $('status').hidden = true; if (!sudahMuat) muat(); });
   window.addEventListener('offline', function () { if (sudahMuat) $('status').hidden = false; });
+
+  // ── Titipan penyimpanan aplikasi ──
+  // Iframe credentialless kehilangan penyimpanannya setiap kali ditutup. Aplikasi menitipkan
+  // data "Ingat saya", snapshot, dan draf ke sini, lalu memintanya kembali saat dibuka.
+  var AWALAN = 'ecibl_app_';
+  var asalApp = function (o) { return /^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(o); };
+  var titipan = function () {
+    var isi = {};
+    try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k.indexOf(AWALAN) === 0) isi[k.slice(AWALAN.length)] = localStorage.getItem(k); } } catch (e) {}
+    return isi;
+  };
+  var hapusTitipan = function () { Object.keys(titipan()).forEach(function (k) { try { localStorage.removeItem(AWALAN + k); } catch (e) {} }); };
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.ecibl !== 1 || !asalApp(e.origin) || !e.source) return;
+    if (d.jenis === 'minta') e.source.postMessage({ ecibl: 1, jenis: 'isi', isi: titipan() }, e.origin);
+    else if (d.jenis === 'simpan' && typeof d.k === 'string') simpan(AWALAN + d.k, String(d.v));
+    else if (d.jenis === 'hapus' && typeof d.k === 'string') { try { localStorage.removeItem(AWALAN + d.k); } catch (er) {} }
+    else if (d.jenis === 'semua' && d.isi && typeof d.isi === 'object') { hapusTitipan(); Object.keys(d.isi).forEach(function (k) { simpan(AWALAN + k, String(d.isi[k])); }); }
+  });
 
   // ── Service worker (cangkang offline) ──
   if ('serviceWorker' in navigator) {

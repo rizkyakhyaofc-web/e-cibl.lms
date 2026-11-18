@@ -1,7 +1,7 @@
 /* E-CIBL PWA service worker.
  * Cangkang aplikasi (berkas di folder ini) disimpan agar bisa dibuka instan & saat offline.
  * Permintaan ke Google (script.google.com, googleusercontent.com) TIDAK pernah di-cache. */
-const CACHE = 'ecibl-pwa-v1';
+const CACHE = 'ecibl-pwa-v2';
 const SHELL = ['./', './index.html', './config.js', './manifest.json', './offline.html',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 
